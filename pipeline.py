@@ -92,34 +92,68 @@ def s2f(block, numerical_coi = None):
 def trialsplit(block):
     """
     splits a block df into a list of several trial dfs
-    also removes trailing -1's, 
-    TODO could be done more eleganty
+    also removes trailing -1's and buggy ends, 
     """
     
     trials = []
     for i in range(1, max(block.trial)):
-        trial = block.iloc[np.where(block.trial == i)][6:]  # [6:] removes leading -1s
-        trials.append(trial)
+        trial = block.iloc[np.where(block.trial == i)]#[6:]  # [6:] removes leading -1s
+        
+        # remove leading 0s
+        drop_rows = [row for row in trial.index if -1.0 in trial.loc[row,:].values]
+        trial.drop(drop_rows, inplace= True)
+
+        trials.append(trial[:-1]) # cut off buggy ends
 
     return trials
 
 
 def plot_trajectories(trajectories):
-    """plotting trajectories
-    TODO still need to make this work for singular noniterable input"""
+    """
+    plotting endeffector trajectories in 3D
+    """
+    
+    # single DF
+    try:
+        plt.clf()
+        ax = plt.axes(projection='3d')
+    
+        #trial = trial[6:] 
+    
+        ax.plot3D(trajectories.x_right, trajectories.y_right, trajectories.z_right, 'gray')
+        ax.plot3D(trajectories.x_left, trajectories.y_left, trajectories.z_left, 'red')
+        plt.show()
+    
+    # multiple DFs
+    except AttributeError:
+        for trajectory in trajectories:
+            
+            #print(len(trial))
+            plt.clf()
+            ax = plt.axes(projection='3d')
+    
+            #trial = trial[6:] 
+    
+            ax.plot3D(trajectory.x_right, trajectory.y_right, trajectory.z_right, 'gray')
+            ax.plot3D(trajectory.x_left, trajectory.y_left, trajectory.z_left, 'red')
+            plt.show()
+
+
+def mean_trajectory(trajectories):
+    "trajectories is iterable of trajectories as pd.dfs"
+
+    # check if all trials are of the same shape    
+    assert all(trajectory.shape[0]==trajectories[0].shape[0] for trajectory in trajectories), 'trajectories do not seem to be of same shape, please interpolate first'
+    
+    mean = np.zeros(trajectories[0].shape)
     
     for trajectory in trajectories:
         
-        #print(len(trial))
-        plt.clf()
-        ax = plt.axes(projection='3d')
-
-        #trial = trial[6:] 
-
-        ax.plot3D(trajectory.x_right, trajectory.y_right, trajectory.z_right, 'gray')
-        ax.plot3D(trajectory.x_left, trajectory.y_left, trajectory.z_left, 'red')
-        plt.show()
-
+        mean += trajectory
+        
+    mean = mean/len(trajectories)
+    
+    return mean
 
 if __name__ == "__main__":
     
