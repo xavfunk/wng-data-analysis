@@ -26,7 +26,7 @@ def data_loader(vp_name, root = 'C:/Users/xaver/Desktop/wng-data-analysis/'):
     """takes vp_name and root folder and returns list of blocks as dataframes and scenario dictionary"""
     
     # add vp name to root
-    root = 'C:/Users/xaver/Desktop/wng-data-analysis/' + vp_name
+    root = root + vp_name
     os.chdir(root)
    
     # get all blocks as dataframes andput them in list
@@ -63,13 +63,13 @@ def get_coi(block, add_cois = None):
     
     columns = [' \t\tRighthand_x', ' Righthand_y', ' Righthand_z',
            ' \t\tLefthand_x', ' Lefthand_y', ' Lefthand_z',
-           ' Trial', ' TrialType', '\t\tZeit', ' TrailDuration']
+           ' Trial', ' TrialType', '\t\tZeit', ' TrailDuration', '\t\tSuccess']
 
     block = block[columns]
     
     new_columns = ['x_right', 'y_right', 'z_right',
            'x_left', 'y_left', 'z_left',
-           'trial', 'type', 'time', 'duration']
+           'trial', 'type', 'time', 'duration', 'is_success']
     
     block.columns = new_columns
 
@@ -126,23 +126,36 @@ if __name__ == "__main__":
     vp_name = 'pilot7'
     
     # load data
-    blocks, scenario = data_loader(vp_name, root = 'C:/Users/xaver/Desktop/wng-data-analysis/')
-    
+    #blocks, scenario = data_loader(vp_name, root = 'C:/Users/xaver/Desktop/wng-data-analysis/')
+    blocks, scenario = data_loader(vp_name, root = 'C:/Users/gffun/OneDrive/Desktop/spyder-py3XF/Hiwi/wng-data-analysis/')
+
     # get the different conditions as referenced in scenario
     conditions = get_conditions(scenario, 8)
     
+    # get all successful trials
+#    for block in blocks:
+#        #print(np.unique(block[[' Trial']].iloc[np.where(block['\t\tSuccess']==True)[0]])-1)
+#        print(np.unique(block[' TrailDuration'].iloc[np.where(block['\t\tSuccess']==True)[0]])-1)
+#    
     # split blocks into trials
     all_trials = []
     for block in blocks:
         
         block = s2f(get_coi(block))
         all_trials.append(trialsplit(block))
+        
+        # idxs of successful trials
+        print(np.unique(block[['trial']].iloc[np.where(block['is_success']==True)[0]])-1)
+        
+        #durations of successful trials
+        #print(np.unique(block['duration'].iloc[np.where(block['is_success']==True)[0]])-1)
+
     
     # sanity check: how do the trials look like
-    for block in all_trials:
-        for trial in block:
-            plot_trajectories([trial])
-            #print(type(trial))#.columns)
+#    for block in all_trials:
+#        for trial in block:
+#            plot_trajectories([trial])
+#            #print(type(trial))#.columns)
     
     # select successful trials
     
