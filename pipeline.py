@@ -15,22 +15,24 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 import json
 from sklearn.utils import Bunch
+import os
 
 import warnings
 warnings.filterwarnings('ignore')
 
 # define a few helpful functions
 
-def data_loader(vp_name, root = 'C:/Users/xaver/Desktop/wng-data-analysis/'):
+def data_loader(vp_name, root = os.getcwd()):#'C:/Users/xaver/Desktop/wng-data-analysis/'):
     
     """takes vp_name and root folder and returns list of blocks as dataframes and scenario dictionary"""
     
+    #root = os.getcwd()
     # add vp name to root
-    root = root + vp_name
-    os.chdir(root)
+    vp_directory = root + vp_name
+    os.chdir(vp_directory)
    
     # get all blocks as dataframes andput them in list
-    blocks = [pd.read_csv(file, delimiter =';') for file in os.listdir(root) if fnmatch.fnmatch(file, '*_log.csv')]
+    blocks = [pd.read_csv(file, delimiter =';') for file in os.listdir(vp_directory) if fnmatch.fnmatch(file, '*_log.csv')]
     
     # load the scenario 
     _temp = __import__('Versuchsszenario_Pilot' + vp_name[-1], globals(), locals(), ['vardict'], 0)
@@ -155,14 +157,62 @@ def mean_trajectory(trajectories):
     
     return mean
 
+
+def check_successes(vps, root = 'C:/Users/xaver/Desktop/wng-data-analysis/'):
+    """
+    iterates over vps and prints out the indeces of successful trials
+    """
+    
+    for vp in vps:
+        blocks, scenario = data_loader(vp, root)
+        #blocks, scenario = data_loader(vp_name, root = 'C:/Users/gffun/OneDrive/Desktop/spyder-py3XF/Hiwi/wng-data-analysis/')
+
+        # get the different conditions as referenced in scenario
+        #conditions = get_conditions(scenario, 8)
+ 
+        # split blocks into trials
+        all_trials = []
+        print('Successes of {}:'.format(vp))
+
+        for block in blocks:
+            
+            block = s2f(get_coi(block))
+            all_trials.append(trialsplit(block))
+            
+            # idxs of successful trials            
+            print(np.unique(block[['trial']].iloc[np.where(block['is_success']==True)[0]])-1)
+    
+def sort_trials(all_trials, conditions):
+    
+    """
+    takes as arguments the all_trials list and condtitions dict
+    returns a useful structure to group successful trials with same condition together
+    """
+    
+    # TODO
+    # somehow zip the information togehter
+    # remove unsuccessful trials along he way
+    # return a useful thing
+    
+    pass 
+        
+        
 if __name__ == "__main__":
+    
+    vps = ['pilot' + str(i) for i in range(4, 9)]
+    check_successes(vps)
+    
     
     vp_name = 'pilot7'
     
     # load data
-    #blocks, scenario = data_loader(vp_name, root = 'C:/Users/xaver/Desktop/wng-data-analysis/')
-    blocks, scenario = data_loader(vp_name, root = 'C:/Users/gffun/OneDrive/Desktop/spyder-py3XF/Hiwi/wng-data-analysis/')
+    blocks, scenario = data_loader(vp_name, root = 'C:/Users/xaver/Desktop/wng-data-analysis/')
+    #blocks, scenario = data_loader(vp_name, root = 'C:/Users/gffun/OneDrive/Desktop/spyder-py3XF/Hiwi/wng-data-analysis/')
 
+    # some manual data janitoring
+    if vp_name == 'pilot7':
+        blocks.pop(-1)
+        
     # get the different conditions as referenced in scenario
     conditions = get_conditions(scenario, 8)
     
@@ -184,6 +234,9 @@ if __name__ == "__main__":
         #durations of successful trials
         #print(np.unique(block['duration'].iloc[np.where(block['is_success']==True)[0]])-1)
 
+    for block in all_trials:
+        
+        sorted_trials = sort_trials(block, conditions)
     
     # sanity check: how do the trials look like
 #    for block in all_trials:
