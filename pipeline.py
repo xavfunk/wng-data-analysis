@@ -182,25 +182,40 @@ def check_successes(vps, root = 'C:/Users/xaver/Desktop/wng-data-analysis/'):
             # idxs of successful trials            
             print(np.unique(block[['trial']].iloc[np.where(block['is_success']==True)[0]])-1)
     
-def sort_trials(all_trials, conditions):
+def sort_trials(all_trials, scenario, conditions):
     
     """
     takes as arguments the all_trials list and condtitions dict
     returns a useful structure to group successful trials with same condition together
     """
-    
+       
     # TODO
-    # somehow zip the information togehter
+    # set conditions as a column of df!
+    
+    
+    # somehow zip the information together
+    # for block in all_trials:
+        
+    #     for trial, val in zip(block, scenario['Block1']['Trials'].items()):
+            
+    #         print(trial.trial.iloc[0], val)#(val['Cube']['Placement'], val['Cube']))
+            
+    
+    for block in ['Block' + str(i) for i in range(1, len(all_trials)+1)]:
+        
+        for trial, val in scenario[block]['Trials'].items():
+    
+                print(block, trial, (val['Cube']['Placement'], val['Cube']['Rack']))
+    
+    
     # remove unsuccessful trials along he way
     # return a useful thing
-    
-    pass 
-        
+            
         
 if __name__ == "__main__":
     
     vps = ['pilot' + str(i) for i in range(4, 9)]
-    check_successes(vps)
+    #check_successes(vps)
     
     
     vp_name = 'pilot7'
@@ -210,8 +225,8 @@ if __name__ == "__main__":
     #blocks, scenario = data_loader(vp_name, root = 'C:/Users/gffun/OneDrive/Desktop/spyder-py3XF/Hiwi/wng-data-analysis/')
 
     # some manual data janitoring
-    if vp_name == 'pilot7':
-        blocks.pop(-1)
+    #if vp_name == 'pilot7':
+    blocks.pop(-1)
         
     # get the different conditions as referenced in scenario
     conditions = get_conditions(scenario, 8)
@@ -229,14 +244,16 @@ if __name__ == "__main__":
         all_trials.append(trialsplit(block))
         
         # idxs of successful trials
-        print(np.unique(block[['trial']].iloc[np.where(block['is_success']==True)[0]])-1)
+        #print(np.unique(block[['trial']].iloc[np.where(block['is_success']==True)[0]])-1)
         
         #durations of successful trials
         #print(np.unique(block['duration'].iloc[np.where(block['is_success']==True)[0]])-1)
 
-    for block in all_trials:
+    #for block in all_trials:
         
-        sorted_trials = sort_trials(block, conditions)
+    #    sorted_trials = sort_trials(block, conditions)
+    
+    sort_trials(all_trials, scenario, conditions)
     
     # sanity check: how do the trials look like
 #    for block in all_trials:
