@@ -158,7 +158,7 @@ def mean_trajectory(trajectories):
     return mean
 
 
-def check_successes(vps, root = 'C:/Users/xaver/Desktop/wng-data-analysis/'):
+def check_successes(vps, root = 'C:/Users/xaver/Desktop/repos/wng-data-analysis/'):
     """
     iterates over vps and prints out the indeces of successful trials
     """
@@ -181,35 +181,76 @@ def check_successes(vps, root = 'C:/Users/xaver/Desktop/wng-data-analysis/'):
             
             # idxs of successful trials            
             print(np.unique(block[['trial']].iloc[np.where(block['is_success']==True)[0]])-1)
+
+# =============================================================================
+# def get_successes_all(vps, root = 'C:/Users/xaver/Desktop/repos/wng-data-analysis/'):
+#     """
+#     iterates over vps and returns the indeces of successful trials
+#     """
+#     
+#     for vp in vps:
+#         blocks, scenario = data_loader(vp, root)
+#         #blocks, scenario = data_loader(vp_name, root = 'C:/Users/gffun/OneDrive/Desktop/spyder-py3XF/Hiwi/wng-data-analysis/')
+# 
+#         # get the different conditions as referenced in scenario
+#         #conditions = get_conditions(scenario, 8)
+#  
+#         # split blocks into trials
+#         all_trials = []
+#         print('Successes of {}:'.format(vp))
+# 
+#         for block in blocks:
+#             
+#             block = s2f(get_coi(block))
+#             all_trials.append(trialsplit(block))
+#             
+#             # idxs of successful trials            
+#             print(np.unique(block[['trial']].iloc[np.where(block['is_success']==True)[0]])-1)
+#             
+# =============================================================================
+
+def get_successes_blockwise(blocks):
+    """
+    iterates over vps and returns the indeces of successful trials
+    """
+    successes = []
     
-def sort_trials(all_trials, scenario, conditions):
+    for block in blocks:
+        
+        block = s2f(get_coi(block))
+        #all_trials.append(trialsplit(block))
+        
+        # idxs of successful trials            
+        successes.append(np.unique(block[['trial']].iloc[np.where(block['is_success']==True)[0]])-1)
+    
+    return successes 
+
+    
+def sort_trials(all_trials, scenario, conditions, successful_trials):
     
     """
     takes as arguments the all_trials list and condtitions dict
-    returns a useful structure to group successful trials with same condition together
+    returns a dict matching successful trials with their condition
+    TODO
+    returns a dict grouping successful trials with same condition together?
     """
-       
-    # TODO
-    # set conditions as a column of df!
-    
-    
-    # somehow zip the information together
-    # for block in all_trials:
-        
-    #     for trial, val in zip(block, scenario['Block1']['Trials'].items()):
-            
-    #         print(trial.trial.iloc[0], val)#(val['Cube']['Placement'], val['Cube']))
-            
+                   
+    blockwise_trials_to_conditions = {}
     
     for block in ['Block' + str(i) for i in range(1, len(all_trials)+1)]:
         
+        trials_to_conditions = {}
+        
         for trial, val in scenario[block]['Trials'].items():
-    
-                print(block, trial, (val['Cube']['Placement'], val['Cube']['Rack']))
-    
-    
-    # remove unsuccessful trials along he way
-    # return a useful thing
+                
+                if int(trial) in successful_trials[int(block[-1])-1]:
+                    #print(block, trial, (val['Cube']['Placement'], val['Cube']['Rack']))
+                    trials_to_conditions[str(trial)] = (val['Cube']['Placement'], val['Cube']['Rack'])
+
+        blockwise_trials_to_conditions[block] = trials_to_conditions
+
+    return blockwise_trials_to_conditions  # block : trialnumber : condition
+
             
         
 if __name__ == "__main__":
@@ -221,7 +262,8 @@ if __name__ == "__main__":
     vp_name = 'pilot7'
     
     # load data
-    blocks, scenario = data_loader(vp_name, root = 'C:/Users/xaver/Desktop/wng-data-analysis/')
+    blocks, scenario = data_loader(vp_name, root = 'C:/Users/xaver/Desktop/repos/wng-data-analysis/')
+    #blocks, scenario = data_loader(vp_name, root = 'C:/Users/xaver/Desktop/wng-data-analysis/')
     #blocks, scenario = data_loader(vp_name, root = 'C:/Users/gffun/OneDrive/Desktop/spyder-py3XF/Hiwi/wng-data-analysis/')
 
     # some manual data janitoring
@@ -235,7 +277,10 @@ if __name__ == "__main__":
 #    for block in blocks:
 #        #print(np.unique(block[[' Trial']].iloc[np.where(block['\t\tSuccess']==True)[0]])-1)
 #        print(np.unique(block[' TrailDuration'].iloc[np.where(block['\t\tSuccess']==True)[0]])-1)
-#    
+#
+
+    successful_trials = get_successes_blockwise(blocks)
+
     # split blocks into trials
     all_trials = []
     for block in blocks:
@@ -253,7 +298,7 @@ if __name__ == "__main__":
         
     #    sorted_trials = sort_trials(block, conditions)
     
-    sort_trials(all_trials, scenario, conditions)
+    sort_trials(all_trials, scenario, conditions, successful_trials)
     
     # sanity check: how do the trials look like
 #    for block in all_trials:
