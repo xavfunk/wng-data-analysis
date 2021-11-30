@@ -70,13 +70,13 @@ def get_coi(block, add_cois = None):
     
     columns = [' \t\tRighthand_x', ' Righthand_y', ' Righthand_z',
            ' \t\tLefthand_x', ' Lefthand_y', ' Lefthand_z',
-           ' Trial', ' TrialType', '\t\tZeit', ' TrailDuration', '\t\tSuccess']
+           ' Trial', ' TrialType', '\t\tZeit', ' TrailDuration', '\t\tSuccess', '\t\tViapoint passed']
 
     block = block[columns]
     
     new_columns = ['x_right', 'y_right', 'z_right',
            'x_left', 'y_left', 'z_left',
-           'trial', 'type', 'time', 'duration', 'is_success']
+           'trial', 'type', 'time', 'duration', 'is_success', 'vp_passed']
     
     block.columns = new_columns
 
@@ -157,8 +157,7 @@ def plot_all_trajectories(trajectories):
     ax = plt.axes(projection='3d')
 
     for trajectory in trajectories:
-        
-
+    
         ax.plot3D(trajectory.x_right, trajectory.y_right, trajectory.z_right, 'gray')
         ax.plot3D(trajectory.x_left, trajectory.y_left, trajectory.z_left, 'red')
     
@@ -401,6 +400,14 @@ def sort_trials(all_trials, scenario, conditions, successful_trials):
 
     return blockwise_trials_to_conditions, blockwise_conditions_to_trials # block : trialnumber : condition, block : conditon : [trialidx]
 
+
+def passed_viapoint(trial):
+    """
+    returns only data after viapoint passed
+    might return an empty dataframe
+    """
+    return trial[trial.vp_passed == True]
+
             
 #__name__ = 'notmain'
 if __name__ == "__main__":
@@ -408,6 +415,8 @@ if __name__ == "__main__":
     vps = ['pilot' + str(i) for i in range(4, 9)]
     #check_successes(vps)
     
+    # best pilots are 5 and 7
+    # 6 is ok
     vp_name = 'pilot7'
     
     # load data
@@ -418,7 +427,10 @@ if __name__ == "__main__":
     blocks.pop(-1)
         
     # get the different conditions as referenced in scenario
-    conditions = get_conditions(scenario, 8)
+    if vp_name == 'pilot6':
+        conditions = get_conditions(scenario, 7)
+    else:
+        conditions = get_conditions(scenario, 8)
     
     # get successful trials
     successful_trials = get_successes_blockwise(blocks)
@@ -437,23 +449,34 @@ if __name__ == "__main__":
         #durations of successful trials
         #print(np.unique(block['duration'].iloc[np.where(block['is_success']==True)[0]])-1)
 
-    
+        
+    # sanity check: how do all the trials look like
+    # for block in all_trials:
+    #     for trial in block:
+    #         plot_trajectories([trial])
+            #print(type(trial))#.columns)
+
     _, sorted_trials = sort_trials(all_trials, scenario, conditions, successful_trials)
-    
-    # sanity check: how do the trials look like
-#    for block in all_trials:
-#        for trial in block:
-#            plot_trajectories([trial])
-#            #print(type(trial))#.columns)
     
     for block, blockname in zip(all_trials, ['Block' + str(i) for i in range(1, len(all_trials)+1)]):
         
-        for condition in conditions[blockname]:
-            
-            trials_of_interest = [block[i] for i in sorted_trials[blockname][str(condition)]]
+         for condition in conditions[blockname]:
+             
+            # getting trials of interest that passed viapoint, are successes and (heuristically) longer than 50 and shorter than 250
+            trials_of_interest = [passed_viapoint(block[i]) for i in sorted_trials[blockname][str(condition)] \
+                                   #if (not passed_viapoint(block[i]).empty) or (len(passed_viapoint(block[i])) > 50)]
+                                   if (250 > len(passed_viapoint(block[i])) > 50)]
+                 
+            if len(trials_of_interest) < 2:
+                continue
+
+            # sanity checking: plot trials of interest and print their length
+            #plot_all_trajectories(trials_of_interest)
+            #print(f'trajectory lengths for {blockname}, {condition}', [len(traj) for traj in trials_of_interest])
+
             interpolated_trials = interpolate_trajectories(trials_of_interest, 1500)
             mean_trajectory = get_mean_trajectory(interpolated_trials)
-
+            
             convergence = False
             
             # set warped_trajectories to start
@@ -462,10 +485,14 @@ if __name__ == "__main__":
             tdist = 0
             
             loop = 0
-
+            
             # randomly choose a trajectory to warp onto
-            chosen_one = np.random.randint(0, len(trials_of_interest))
-                
+            #chosen_one = np.random.randint(0, len(trials_of_interest))
+             
+            # choose the longest trajectory to warp onto
+            lengths = [len(traj) for traj in trials_of_interest]
+            longest_one = lengths.index(max(lengths))
+            
             while not convergence:
                                 
                 # interpolate trajectories
@@ -494,14 +521,15 @@ if __name__ == "__main__":
                 plt.title('iteration {}, condition {}, {}'.format(str(loop), str(condition), str(blockname)))
                 plt.show()
                 
-
+            
                 
                 for trial in tqdm(trials_of_interest):
                     # right hand
                     x_r = trial[['x_right','y_right','z_right']].to_numpy()
                     #l_r = mean_trajectory[['x_right','y_right','z_right']].to_numpy()
-                    l_r = trials_of_interest[chosen_one][['x_right','y_right','z_right']].to_numpy()
-
+                    #l_r = trials_of_interest[chosen_one][['x_right','y_right','z_right']].to_numpy()
+                    l_r = trials_of_interest[longest_one][['x_right','y_right','z_right']].to_numpy()
+            
                     
                     dis, optPath = dynTimeWarp(x_r,l_r,latentStddev=None,wndlen=1000,transitions=[(1,1,np.log(2.0)),(0,1,np.log(2.0))])
                     
@@ -515,7 +543,8 @@ if __name__ == "__main__":
                     # left hand
                     x_l = trial[['x_left','y_left','z_left']].to_numpy()
                     #l_l = mean_trajectory[['x_left','y_left','z_left']].to_numpy()
-                    l_l = trials_of_interest[chosen_one][['x_left','y_left','z_left']].to_numpy()
+                    #l_l = trials_of_interest[chosen_one][['x_left','y_left','z_left']].to_numpy()
+                    l_l = trials_of_interest[longest_one][['x_left','y_left','z_left']].to_numpy()
 
                     
                     dis, optPath = dynTimeWarp(x_l,l_l,latentStddev=None,wndlen=1000,transitions=[(1,1,np.log(2.0)),(0,1,np.log(2.0))])
@@ -532,7 +561,8 @@ if __name__ == "__main__":
                 
                 loop += 1
                 print(tdist)
-                # check for convergence
+                
+                # check for convergence                
                 if loop == 10:
                     break
             
@@ -543,7 +573,7 @@ if __name__ == "__main__":
             #ax2 = plt.axes()
             for trajectory in trials_of_interest:
                 
-        
+            
                 ax.plot3D(trajectory.x_right, trajectory.y_right, trajectory.z_right, 'gray')
                 ax.plot3D(trajectory.x_left, trajectory.y_left, trajectory.z_left, 'red')
                 #ax2.plot(trajectory.x_right)
